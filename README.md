@@ -53,7 +53,7 @@ The script will:
 2. Prompt for **wallet name** (empty uses `DEFAULT_WALLET_NAME` if set); a name is required.
 3. Prompt for **subnet netuid** (integer **0–128**).
 4. Unlock the coldkey and log a shortened coldkey plus balance (`[wallet]`).
-5. Load all alpha positions for that coldkey (`[stake]`), print the subnet’s **current price** in TAO (`[price]`), then prompt for **limit price** in TAO: empty means “market” (no limit); otherwise submission waits until the subnet price is **strictly above** the limit.
+5. Load all alpha positions for that coldkey (`[stake]`), print the subnet’s **current price** in TAO (`[price]`), then prompt for **limit price** in TAO: empty means “market” (no limit); otherwise submission waits until the subnet price is **strictly above** the limit. Limit prices must be non-negative finite numbers; values such as `nan`, `inf`, or negative numbers are rejected.
 6. For **each** position in the list: print netuid, hotkey (short and full), and alpha; if `netuid` matches the one you chose, ask **Remove stake for this position?** (`y` / default `N`). Other netuids are skipped with a `[skip]` log.
 7. Enter a loop: build a single `Utility.force_batch` of `remove_stake_full_limit` calls. Positions are re-checked on-chain; each call is only included if remaining alpha is **greater than** **0.1** TAO-equivalent (`MIN_REMAINING_ALPHA_TAO`). If nothing qualifies, the tool exits that loop with a message.
 8. Each iteration: wait for the next block (`[wait]`), re-read the subnet price; if there is no limit or `current_price > limit_price`, submit the batch with `mev_submit_encrypted` (`[submit]`). On success or failure, log outcome and any `message` / `error` from the response, then clear the batch so it can be rebuilt next time. If the price is still at or below the limit, log `[price]` and wait for the next block **without** incrementing the build counter.
@@ -69,6 +69,14 @@ Logs use bracketed tags such as `connect`, `wallet`, `stake`, `price`, `position
 - **MEV shield**: Submissions use the library’s encrypted MEV path; success or failure is logged from the response.
 - **Safety**: You explicitly confirm each hotkey to remove. The script does not remove 100% of alpha on a position; a small remainder is kept per the minimum threshold above.
 
+## Tests
+
+The input-validation tests use only the Python standard library and do not connect to Bittensor:
+
+```bash
+python -m unittest discover -v
+```
+
 ## License
 
-See the repository’s license if one is present; the project depends on Bittensor’s license terms for on-chain usage.
+See [LICENSE](LICENSE); the project depends on Bittensor’s license terms for on-chain usage.
