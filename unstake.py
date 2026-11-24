@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import sys
 
@@ -30,6 +31,28 @@ def _max_retry_limit_from_env() -> int | None:
 
 
 MAX_RETRY_LIMIT = _max_retry_limit_from_env()
+
+
+def _parse_netuid(raw: str) -> int:
+    try:
+        netuid = int(raw.strip(), 10)
+    except ValueError:
+        raise ValueError("Netuid must be an integer") from None
+    if netuid < 0 or netuid > 128:
+        raise ValueError("Netuid must be between 0 and 128")
+    return netuid
+
+
+def _parse_limit_price(raw: str) -> float | None:
+    if not raw.strip():
+        return None
+    try:
+        limit_price = float(raw)
+    except ValueError:
+        raise ValueError("Limit price must be a non-negative finite number") from None
+    if not math.isfinite(limit_price) or limit_price < 0:
+        raise ValueError("Limit price must be a non-negative finite number")
+    return limit_price
 
 
 def _log(tag: str, message: str) -> None:
@@ -78,12 +101,7 @@ async def main() -> None:
         wallet_name = input(f"Wallet name [Enter = default {default_hint}]: ").strip() or DEFAULT_WALLET_NAME
         if not wallet_name:
             raise ValueError("Wallet name is required")
-        try:
-            netuid = int(input("Subnet netuid: ").strip())
-        except ValueError:
-            raise ValueError("Netuid must be an integer") from None
-        if netuid < 0 or netuid > 128:
-            raise ValueError("Netuid must be between 0 and 128")
+        netuid = _parse_netuid(input("Subnet netuid: "))
 
         wallet = bt.Wallet(name=wallet_name)
         wallet.unlock_coldkey()
@@ -96,14 +114,8 @@ async def main() -> None:
         current_price = (await subtensor.get_subnet_price(netuid)).tao
         _log("price", f"subnet {netuid}  current={current_price} TAO")
 
-        limit_raw = input("Limit price [Enter = market / no limit]: ").strip()
-        if not limit_raw:
-            limit_price = None
-        else:
-            try:
-                limit_price = float(limit_raw)
-            except ValueError:
-                raise ValueError("Limit price must be a number") from None
+        limit_raw = input("Limit price [Enter = market / no limit]: ")
+        limit_price = _parse_limit_price(limit_raw)
 
         remove_stake_list: list[tuple[str, int]] = []
         for si in stake_info:
